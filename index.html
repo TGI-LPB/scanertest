@@ -86,36 +86,83 @@
             width: 100%;
             margin-top: 10px;
         }
-        .btn-stop {
-            background-color: #ff3b30; /* Merah */
-            color: white;
-            padding: 14px;
-            width: 100%;
-            margin-top: 10px;
-        }
 
-        /* Area Kamera */
+        /* --- UPDATE: Tampilan Scanner Modal Fullscreen --- */
         #scannerBox {
             display: none; /* Disembunyikan awalnya */
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e5ea;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.9); /* Latar belakang gelap transparan */
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .scanner-header {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .scanner-header h3 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+        }
+        .scanner-header p {
+            margin: 0;
+            font-size: 14px;
+            color: #d1d1d6;
+        }
+        .scanner-window {
+            position: relative;
+            width: 85%;
+            max-width: 400px;
+            height: 300px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid #34c759; /* Bingkai hijau */
+            box-shadow: 0 0 20px rgba(52, 199, 89, 0.4);
         }
         #interactive.viewport {
             width: 100%;
-            height: 250px;
-            border-radius: 12px;
-            overflow: hidden;
-            background-color: #000;
-            position: relative;
+            height: 100%;
         }
-        #interactive.viewport canvas, video {
+        #interactive.viewport canvas, #interactive.viewport video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             position: absolute;
             top: 0;
             left: 0;
+        }
+        
+        /* Animasi Garis Scan */
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #34c759;
+            box-shadow: 0 0 10px #34c759;
+            animation: scan 2s infinite linear;
+            z-index: 10;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        .btn-stop-modal {
+            background-color: #ff3b30; /* Merah */
+            color: white;
+            padding: 14px 30px;
+            border-radius: 30px;
+            margin-top: 30px;
+            font-size: 16px;
         }
     </style>
 </head>
@@ -140,12 +187,19 @@
 
         <button type="submit" class="btn btn-submit">Simpan Data</button>
     </form>
+</div>
 
-    <div id="scannerBox">
-        <label style="text-align: center;">Arahkan kamera ke barcode</label>
-        <div id="interactive" class="viewport"></div>
-        <button type="button" id="stopScanBtn" class="btn btn-stop">Batal Scan</button>
+<div id="scannerBox">
+    <div class="scanner-header">
+        <h3>Scan Barcode</h3>
+        <p>Arahkan kamera ke area barcode</p>
     </div>
+    
+    <div class="scanner-window">
+        <div id="interactive" class="viewport"></div>
+        <div class="scan-line"></div> </div>
+    
+    <button type="button" id="stopScanBtn" class="btn btn-stop-modal">Tutup Kamera</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
@@ -160,8 +214,8 @@
 
     // Fungsi Mulai Scan
     startScanBtn.addEventListener('click', function() {
-        // Tampilkan area kamera
-        scannerBox.style.display = 'block';
+        // Tampilkan area kamera (gunakan flex agar posisinya ke tengah)
+        scannerBox.style.display = 'flex';
 
         Quagga.init({
             inputStream : {
