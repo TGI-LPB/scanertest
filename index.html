@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RePack mPOS Scanner Pro</title>
     <style>
-        /* Gaya UI Modern ala iOS */
+        /* Gaya UI Modern */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f2f2f7; color: #1c1c1e;
@@ -61,12 +61,25 @@
         }
         #interactive.viewport canvas.drawingBuffer { z-index: 2; pointer-events: none; }
 
+        /* Top Bar (Tutup & Flash) */
+        .top-bar {
+            position: absolute; top: env(safe-area-inset-top, 20px); left: 0;
+            width: 100%; display: flex; justify-content: space-between;
+            padding: 15px 20px; box-sizing: border-box; z-index: 20;
+        }
+        .btn-icon {
+            background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+            padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+
+        /* Overlay Area Tengah */
         .scanner-overlay {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; z-index: 5;
-            pointer-events: auto; 
+            pointer-events: none; 
             display: flex; flex-direction: column;
-            justify-content: center; align-items: center; touch-action: none;
+            justify-content: center; align-items: center;
         }
 
         .guide-box {
@@ -80,8 +93,6 @@
             border-color: #34c759; background-color: rgba(52, 199, 89, 0.2);
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 20px #34c759;
         }
-        
-        .guide-box.ocr-mode { border-color: #007aff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); }
 
         .center-dot {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -99,42 +110,44 @@
             90% { opacity: 1; } 100% { top: 100%; opacity: 0; }
         }
 
-        #flash-effect {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: white; opacity: 0; z-index: 10;
-            pointer-events: none; transition: opacity 0.1s ease-out;
-        }
-        .flash-active { opacity: 0.8 !important; transition: none !important; }
-
         .help-text {
-            color: white; font-size: 14px; font-weight: 500;
-            margin-top: 25px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            z-index: 6; pointer-events: none; text-align: center; line-height: 1.5;
+            color: white; font-size: 13px; font-weight: 500;
+            margin-top: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            z-index: 6; text-align: center; line-height: 1.5;
         }
 
-        .controls-bottom {
-            position: absolute; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); 
-            left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 20;
+        /* Bottom Bar (Tombol OCR) */
+        .bottom-bar {
+            position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); 
+            left: 0; width: 100%; display: flex; justify-content: center; z-index: 20;
         }
-
-        .btn-scanner {
-            background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            color: white; padding: 12px 24px; border-radius: 30px;
-            font-size: 14px; font-weight: 600; border: 1px solid rgba(255,255,255,0.3); cursor: pointer;
+        .btn-shutter {
+            background-color: #007aff; border: 3px solid rgba(255,255,255,0.5);
+            color: white; padding: 15px 30px; border-radius: 30px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .btn-ocr { background-color: rgba(0, 122, 255, 0.8); border-color: #007aff; }
+        .btn-shutter:active { transform: scale(0.95); background-color: #005bb5; }
 
-        #ocrLoading {
-            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: white; font-weight: bold; font-size: 18px;
-            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 10px; z-index: 30;
+        /* Loading & Preview OCR */
+        #ocrOverlay {
+            display: none; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; background: #000; z-index: 30;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        #ocrPreview {
+            width: 100%; max-height: 70%; object-fit: contain; margin-bottom: 20px;
+        }
+        .ocr-status {
+            color: white; font-weight: bold; font-size: 16px;
+            background: rgba(0,0,0,0.7); padding: 12px 24px; border-radius: 12px;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Input Data Item</h2>
+    <h2>Kasir RePack POS</h2>
     
     <form id="itemForm">
         <div class="form-group">
@@ -157,23 +170,31 @@
 <div id="scannerBox">
     <div class="scanner-window">
         <div id="interactive" class="viewport"></div>
-        <div id="flash-effect"></div>
         
-        <div class="scanner-overlay" id="tapArea">
-            <div class="guide-box" id="guideBox">
-                <div class="scan-line" id="scanLine"></div>
-                <div class="center-dot" id="centerDot"></div> 
-            </div>
-            
-            <div class="help-text" id="helpText">Posisikan barcode di garis hijau<br>Ketuk 2x cepat untuk senter</div>
+        <div class="top-bar">
+            <button type="button" id="stopScanBtn" class="btn-icon">✖ Batal</button>
+            <button type="button" id="flashBtn" class="btn-icon">🔦 Senter</button>
         </div>
         
-        <div id="ocrLoading">Membaca Teks... ⏳</div>
-    </div>
-    
-    <div class="controls-bottom">
-        <button type="button" id="btnOcr" class="btn-scanner btn-ocr">Jepret Teks</button>
-        <button type="button" id="stopScanBtn" class="btn-scanner">Batal</button>
+        <div class="scanner-overlay">
+            <div class="guide-box" id="guideBox">
+                <div class="scan-line" id="scanLine"></div>
+                <div class="center-dot"></div> 
+            </div>
+            <div class="help-text">
+                Posisikan garis di barcode.<br>
+                Jika gagal, arahkan ke <b>angka</b> dan tekan tombol bawah.
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <button type="button" id="btnOcr" class="btn-shutter">📸 Jepret Angka</button>
+        </div>
+
+        <div id="ocrOverlay">
+            <img id="ocrPreview" src="" alt="Hasil Jepretan">
+            <div class="ocr-status" id="ocrStatusText">Menganalisis Angka... ⏳</div>
+        </div>
     </div>
 </div>
 
@@ -184,27 +205,25 @@
     const startScanBtn = document.getElementById('startScanBtn');
     const stopScanBtn = document.getElementById('stopScanBtn');
     const btnOcr = document.getElementById('btnOcr');
+    const flashBtn = document.getElementById('flashBtn');
     const scannerBox = document.getElementById('scannerBox');
     const barcodeInput = document.getElementById('barcodeInput');
     const itemForm = document.getElementById('itemForm');
     
-    const tapArea = document.getElementById('tapArea');
-    const flashEffect = document.getElementById('flash-effect');
     const guideBox = document.getElementById('guideBox');
-    const ocrLoading = document.getElementById('ocrLoading');
-    const scanLine = document.getElementById('scanLine');
-    const helpText = document.getElementById('helpText');
+    const ocrOverlay = document.getElementById('ocrOverlay');
+    const ocrPreview = document.getElementById('ocrPreview');
+    const ocrStatusText = document.getElementById('ocrStatusText');
 
     let scanCount = 0;
     let lastScannedCode = "";
     let isTorchOn = false;
-    let lastClickTime = 0;
 
+    // --- MULAI SCANNER ---
     startScanBtn.addEventListener('click', function() {
         scannerBox.style.display = 'flex';
-        guideBox.className = 'guide-box'; 
-        scanLine.style.display = 'block';
-        helpText.innerHTML = "Posisikan barcode di garis hijau<br>Ketuk 2x cepat untuk senter";
+        guideBox.classList.remove('success'); 
+        ocrOverlay.style.display = 'none';
         scanCount = 0;
         lastScannedCode = "";
         isTorchOn = false;
@@ -220,26 +239,12 @@
                     height: { ideal: 720 },
                     advanced: [{ focusMode: "continuous" }]
                 },
-                // Area pandang dilebarkan agar seluruh bagian barcode bisa masuk frame dengan utuh
-                area: { top: "35%", right: "2%", left: "2%", bottom: "35%" }
+                area: { top: "35%", right: "5%", left: "5%", bottom: "35%" }
             },
             locator: { patchSize: "small", halfSample: false },
             numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2,
             decoder : { 
-                // --- MEMASUKKAN SEMUA FORMAT BARCODE ---
-                readers : [
-                    "code_128_reader", 
-                    "ean_reader", 
-                    "ean_8_reader", 
-                    "code_39_reader", 
-                    "code_39_vin_reader", 
-                    "codabar_reader", 
-                    "upc_reader", 
-                    "upc_e_reader", 
-                    "i2of5_reader", 
-                    "2of5_reader", 
-                    "code_93_reader"
-                ] 
+                readers : ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader"] 
             },
             locate: true
         }, function(err) {
@@ -253,55 +258,36 @@
         });
     });
 
+    // --- TUTUP SCANNER ---
     stopScanBtn.addEventListener('click', function() {
         Quagga.stop();
         scannerBox.style.display = 'none';
     });
 
-    tapArea.addEventListener('click', async function(e) {
-        const currentTime = new Date().getTime();
-        const timeDiff = currentTime - lastClickTime;
-
-        if (timeDiff < 400 && timeDiff > 0) {
-            flashEffect.classList.add('flash-active');
-            setTimeout(() => flashEffect.classList.remove('flash-active'), 100);
-
-            const track = Quagga.CameraAccess.getActiveTrack();
-            if (track && typeof track.getCapabilities === 'function') {
-                const capabilities = track.getCapabilities();
-                if (capabilities.torch) {
-                    isTorchOn = !isTorchOn; 
-                    try {
-                        await track.applyConstraints({ advanced: [{ torch: isTorchOn }] });
-                    } catch (err) {}
-                }
+    // --- TOMBOL SENTER MANUAL ---
+    flashBtn.addEventListener('click', async function() {
+        const track = Quagga.CameraAccess.getActiveTrack();
+        if (track && typeof track.getCapabilities === 'function') {
+            const capabilities = track.getCapabilities();
+            if (capabilities.torch) {
+                isTorchOn = !isTorchOn; 
+                try {
+                    await track.applyConstraints({ advanced: [{ torch: isTorchOn }] });
+                    flashBtn.style.backgroundColor = isTorchOn ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.5)";
+                    flashBtn.style.color = isTorchOn ? "black" : "white";
+                } catch (err) {}
+            } else {
+                alert("Perangkat tidak mendukung senter via web.");
             }
-            lastClickTime = 0; 
-        } else {
-            lastClickTime = currentTime;
         }
     });
 
-    // --- LOGIKA SCANNER DENGAN REM & FILTER PINTAR ---
+    // --- DETEKSI BARCODE GARIS (AUTO) ---
     Quagga.onDetected(function(result) {
         const code = result.codeResult.code;
-        const format = result.codeResult.format;
 
-        // 1. FILTER PINTAR: Membuang hasil tebakan yang terlalu pendek atau tidak masuk akal
-        let isValid = true;
-        
-        // EAN-13 dan UPC harus pas panjangnya
-        if (format === "ean_13" && code.length !== 13) isValid = false;
-        if (format === "upc_a" && code.length !== 12) isValid = false;
-        if (format === "ean_8" && code.length !== 8) isValid = false;
-        
-        // Tolak secara universal jika panjang karakter kurang dari 5 (Mencegah tebakan asal)
-        if (code.length < 5) isValid = false;
+        if (code.length < 5) return; // Filter sampah
 
-        // Jika terpotong atau tidak valid, abaikan
-        if (!isValid) return; 
-
-        // 2. VERIFIKASI KETAT (Harus terbaca sama 6x agar tidak tebak-tebakan)
         if (code === lastScannedCode) {
             scanCount++;
         } else {
@@ -309,8 +295,7 @@
             lastScannedCode = code;
         }
 
-        // 6 kali konfirmasi memastikan seluruh batang barcode sudah tertangkap kamera dengan jelas
-        if (scanCount >= 6) {
+        if (scanCount >= 4) {
             guideBox.classList.add('success');
             if ("vibrate" in navigator) navigator.vibrate(150); 
             
@@ -318,57 +303,60 @@
                 barcodeInput.value = code;
                 Quagga.stop();
                 scannerBox.style.display = 'none';
-            }, 250);
+            }, 300);
         }
     });
 
-    // --- Mode OCR (Membaca Teks Manual) ---
+    // --- MODE OCR (JEPRET ANGKA) ---
     btnOcr.addEventListener('click', function() {
-        Quagga.stop();
-        
-        guideBox.className = 'guide-box ocr-mode';
-        scanLine.style.display = 'none';
-        helpText.innerHTML = "Posisikan ANGKA barcode di dalam kotak biru,<br>lalu tunggu sebentar...";
-        ocrLoading.style.display = 'block';
-
-        flashEffect.classList.add('flash-active');
-        setTimeout(() => flashEffect.classList.remove('flash-active'), 100);
-        if ("vibrate" in navigator) navigator.vibrate(50);
-
+        // Ambil elemen video yang sedang memutar kamera
         const video = document.querySelector('#interactive video');
+        if (!video) return;
+
+        // Buat kanvas untuk menangkap *screenshot*
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Ubah jadi file gambar (Base64)
+        const imageDataUrl = canvas.toDataURL('image/jpeg');
 
+        // Hentikan Quagga dan tampilkan layar Loading + Preview Gambar
+        Quagga.stop();
+        ocrPreview.src = imageDataUrl;
+        ocrOverlay.style.display = 'flex';
+        ocrStatusText.innerText = "Menganalisis Angka... ⏳";
+        if ("vibrate" in navigator) navigator.vibrate(50);
+
+        // Lempar gambar ke Tesseract.js (AI)
         Tesseract.recognize(
-            canvas,
+            imageDataUrl,
             'eng',
-            { 
-                logger: m => console.log(m),
-                tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' 
-            }
+            { logger: m => console.log(m) }
         ).then(({ data: { text } }) => {
-            const cleanText = text.replace(/\s+/g, '');
-            ocrLoading.style.display = 'none';
+            // Bersihkan teks: Hanya ambil angka dan huruf besar
+            const cleanText = text.replace(/[^a-zA-Z0-9]/g, '');
 
             if (cleanText.length >= 4) { 
-                barcodeInput.value = cleanText;
-                alert("Sukses Membaca Teks: " + cleanText);
-                scannerBox.style.display = 'none';
+                ocrStatusText.innerText = "Sukses! ✔️";
+                setTimeout(() => {
+                    barcodeInput.value = cleanText;
+                    scannerBox.style.display = 'none';
+                }, 800);
             } else {
-                alert("Gagal membaca teks dengan jelas. Coba jepret ulang atau ketik manual.");
+                alert("Teks tidak terbaca jelas. Silakan ketik manual atau coba jepret lagi.");
                 scannerBox.style.display = 'none';
             }
         }).catch(err => {
             console.error(err);
-            ocrLoading.style.display = 'none';
-            alert("Terjadi kesalahan pada mesin pembaca teks.");
+            alert("Sistem OCR sedang sibuk. Coba beberapa saat lagi.");
             scannerBox.style.display = 'none';
         });
     });
 
+    // --- SUBMIT FORM ---
     itemForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const code = barcodeInput.value;
