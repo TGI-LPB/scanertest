@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Form Scanner - GitHub Pages</title>
+    <style>
+        /* Gaya UI Modern ala iOS */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f2f2f7;
+            color: #1c1c1e;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
+        h2 {
+            margin-top: 0;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        /* Gaya Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            color: #8e8e93;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #d1d1d6;
+            border-radius: 12px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background-color: #fafafa;
+        }
+        input:focus {
+            outline: none;
+            border-color: #007aff;
+            background-color: #ffffff;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Gaya Tombol */
+        .btn {
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+        .btn:active {
+            opacity: 0.7;
+        }
+        .btn-scan {
+            background-color: #34c759; /* Hijau */
+            color: white;
+            padding: 0 20px;
+            white-space: nowrap;
+        }
+        .btn-submit {
+            background-color: #007aff; /* Biru */
+            color: white;
+            padding: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-stop {
+            background-color: #ff3b30; /* Merah */
+            color: white;
+            padding: 14px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Area Kamera */
+        #scannerBox {
+            display: none; /* Disembunyikan awalnya */
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5ea;
+        }
+        #interactive.viewport {
+            width: 100%;
+            height: 250px;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            position: relative;
+        }
+        #interactive.viewport canvas, video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Input Data Item</h2>
+    
+    <form id="itemForm">
+        <div class="form-group">
+            <label for="barcodeInput">Kode Barcode / SKU</label>
+            <div class="input-group">
+                <input type="text" id="barcodeInput" placeholder="Scan barcode..." required>
+                <button type="button" id="startScanBtn" class="btn btn-scan">📷 Scan</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="itemName">Nama Barang</label>
+            <input type="text" id="itemName" placeholder="Masukkan nama barang" required>
+        </div>
+
+        <button type="submit" class="btn btn-submit">Simpan Data</button>
+    </form>
+
+    <div id="scannerBox">
+        <label style="text-align: center;">Arahkan kamera ke barcode</label>
+        <div id="interactive" class="viewport"></div>
+        <button type="button" id="stopScanBtn" class="btn btn-stop">Batal Scan</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
+<script>
+    // Ambil elemen HTML
+    const startScanBtn = document.getElementById('startScanBtn');
+    const stopScanBtn = document.getElementById('stopScanBtn');
+    const scannerBox = document.getElementById('scannerBox');
+    const barcodeInput = document.getElementById('barcodeInput');
+    const itemForm = document.getElementById('itemForm');
+
+    // Fungsi Mulai Scan
+    startScanBtn.addEventListener('click', function() {
+        // Tampilkan area kamera
+        scannerBox.style.display = 'block';
+
+        Quagga.init({
+            inputStream : {
+                name : "Live",
+                type : "LiveStream",
+                target: document.querySelector('#interactive'),
+                constraints: {
+                    facingMode: "environment" // Pakai kamera belakang
+                }
+            },
+            decoder : {
+                readers : ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"]
+            }
+        }, function(err) {
+            if (err) {
+                console.error(err);
+                alert("Kamera tidak dapat diakses. Pastikan Anda memberi izin.");
+                scannerBox.style.display = 'none';
+                return;
+            }
+            Quagga.start();
+        });
+    });
+
+    // Fungsi Batal Scan (Tutup Kamera)
+    stopScanBtn.addEventListener('click', function() {
+        Quagga.stop();
+        scannerBox.style.display = 'none';
+    });
+
+    // Event ketika Barcode terbaca
+    Quagga.onDetected(function(result) {
+        const code = result.codeResult.code;
+        
+        // Masukkan hasil scan ke dalam input text form
+        barcodeInput.value = code;
+        
+        // Hentikan kamera dan sembunyikan kotak scanner
+        Quagga.stop();
+        scannerBox.style.display = 'none';
+        
+        console.log("Barcode ditemukan: " + code);
+    });
+
+    // Event ketika form disubmit (Untuk simulasi saja)
+    itemForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // Mencegah halaman reload
+        
+        const code = barcodeInput.value;
+        const name = document.getElementById('itemName').value;
+        
+        alert(`Data Berhasil Disimpan!\n\nBarcode: ${code}\nNama: ${name}`);
+        
+        // Reset form setelah simpan
+        itemForm.reset();
+    });
+</script>
+
+</body>
+</html>
