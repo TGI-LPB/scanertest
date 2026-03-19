@@ -119,14 +119,14 @@
             position: relative;
             width: 90%;
             max-width: 400px;
-            height: 400px; /* Diperbesar agar proporsional dengan kamera */
+            height: 400px; 
             border-radius: 16px;
             overflow: hidden;
-            border: 2px solid #444; /* Bingkai lebih netral */
+            border: 2px solid #444;
             background-color: #000;
         }
         
-        /* Area fokus di tengah (Overlay) */
+        /* Area fokus di tengah (Sekarang bisa di-klik seperti tombol shutter) */
         .scanner-overlay {
             position: absolute;
             top: 50%;
@@ -135,10 +135,32 @@
             width: 80%;
             height: 150px;
             border: 2px solid #34c759;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Menggelapkan area luar */
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
             border-radius: 12px;
             z-index: 5;
-            pointer-events: none;
+            
+            /* Dibuat agar bisa diklik */
+            pointer-events: auto; 
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(52, 199, 89, 0.1);
+            transition: background-color 0.1s ease;
+        }
+        
+        /* Efek kilat saat area tengah ditekan */
+        .scanner-overlay:active {
+            background-color: rgba(255, 255, 255, 0.6);
+        }
+
+        #scan-instruction {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-weight: 700;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+            text-align: center;
+            pointer-events: none; /* Agar tidak menghalangi klik */
         }
 
         #interactive.viewport {
@@ -149,7 +171,6 @@
             align-items: center;
         }
         
-        /* Mencegah Zoom dengan object-fit: contain */
         #interactive.viewport canvas.drawingBuffer {
             position: absolute;
             top: 0;
@@ -158,30 +179,13 @@
             height: 100%;
             object-fit: contain;
             z-index: 2;
+            pointer-events: none;
         }
         #interactive.viewport video {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Tidak memotong/zoom video */
+            object-fit: contain;
             z-index: 1;
-        }
-
-        .scan-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background-color: #34c759;
-            box-shadow: 0 0 8px #34c759;
-            animation: scan 2s infinite linear;
-            z-index: 10;
-        }
-        @keyframes scan {
-            0% { top: 0; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
         }
 
         .btn-stop-modal {
@@ -221,17 +225,17 @@
 <div id="scannerBox">
     <div class="scanner-header">
         <h3>Scan Barcode</h3>
-        <p>Posisikan barcode di dalam kotak hijau</p>
+        <p>Arahkan kamera lalu tap kotak hijau</p>
     </div>
     
     <div class="scanner-window">
         <div id="interactive" class="viewport"></div>
-        <div class="scanner-overlay">
-            <div class="scan-line"></div>
+        <div class="scanner-overlay" id="captureBtn">
+            <span id="scan-instruction">TAP DI SINI UNTUK MENGAMBIL BARCODE</span>
         </div>
     </div>
     
-    <button type="button" id="stopScanBtn" class="btn btn-stop-modal">Batal Scan</button>
+    <button type="button" id="stopScanBtn" class="btn btn-stop-modal">Tutup Kamera</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
@@ -242,17 +246,19 @@
     const scannerBox = document.getElementById('scannerBox');
     const barcodeInput = document.getElementById('barcodeInput');
     const itemForm = document.getElementById('itemForm');
+    
+    const captureBtn = document.getElementById('captureBtn');
+    const scanInstruction = document.getElementById('scan-instruction');
 
-    // Variabel untuk validasi (Anti-Mental)
-    let scanCount = 0;
-    let lastScannedCode = "";
+    // Variabel untuk menyimpan barcode terakhir yang terdeteksi
+    let latestDetectedCode = "";
+    let lastDetectTime = 0;
 
     startScanBtn.addEventListener('click', function() {
         scannerBox.style.display = 'flex';
-        
-        // Reset validasi setiap kali buka scanner
-        scanCount = 0;
-        lastScannedCode = "";
+        latestDetectedCode = "";
+        scanInstruction.innerText = "TAP DI SINI UNTUK MENGAMBIL BARCODE";
+        scanInstruction.style.color = "rgba(255, 255, 255, 0.9)";
 
         Quagga.init({
             inputStream : {
@@ -260,19 +266,18 @@
                 type : "LiveStream",
                 target: document.querySelector('#interactive'),
                 constraints: {
-                    facingMode: "environment" // Pakai kamera belakang standar, tanpa paksaan resolusi yang bikin zoom
+                    facingMode: "environment"
                 }
             },
             locator: {
-                patchSize: "medium", // Ukuran patch untuk mencari barcode
+                patchSize: "medium",
                 halfSample: true
             },
             numOfWorkers: navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4,
             decoder : {
-                // Fokus ke format barcode paling umum di produk untuk mempercepat scanning
                 readers : ["ean_reader", "ean_8_reader", "code_128_reader", "upc_reader"]
             },
-            locate: true // Sangat penting: menyuruh Quagga mencari kotak barcode di gambar
+            locate: true
         }, function(err) {
             if (err) {
                 console.error(err);
@@ -289,31 +294,48 @@
         scannerBox.style.display = 'none';
     });
 
+    // Scanner berjalan di background terus-menerus, TAPI TIDAK OTOMATIS MENGISI FORM
     Quagga.onDetected(function(result) {
-        const code = result.codeResult.code;
+        let code = result.codeResult.code;
         
-        // LOGIKA ANTI-MENTAL: Harus terbaca sama 3 kali berturut-turut
-        if (code === lastScannedCode) {
-            scanCount++;
-        } else {
-            scanCount = 1;
-            lastScannedCode = code;
+        // --- LOGIKA PENGHAPUS ANGKA 0 DI DEPAN ---
+        // Jika format EAN-13 salah membaca UPC-A (12 digit jadi 13 digit)
+        if (code.length === 13 && code.startsWith("0")) {
+            code = code.substring(1); // Buang angka 0 di paling depan
         }
 
-        console.log(`Membaca: ${code} (Kecocokan: ${scanCount}/3)`);
+        // Simpan ke memori sementara
+        latestDetectedCode = code;
+        lastDetectTime = Date.now();
+    });
 
-        // Jika sudah 3 kali cocok, baru anggap valid
-        if (scanCount >= 3) {
-            barcodeInput.value = code;
+    // --- LOGIKA MANUAL CAPTURE (TAP TENGAH) ---
+    captureBtn.addEventListener('click', function() {
+        // Cek apakah kamera sempat menangkap barcode dalam 1.5 detik terakhir
+        if (latestDetectedCode !== "" && (Date.now() - lastDetectTime < 1500)) {
+            
+            // Sukses! Masukkan data ke input
+            barcodeInput.value = latestDetectedCode;
             
             // Hentikan kamera
             Quagga.stop();
             scannerBox.style.display = 'none';
             
-            // Mainkan suara beep kecil (opsional, UX yang bagus)
+            // Getar jika didukung HP
             if ("vibrate" in navigator) {
-                navigator.vibrate(200); // HP akan bergetar saat sukses
+                navigator.vibrate(200); 
             }
+            
+        } else {
+            // Jika ditekan tapi barcode belum fokus/terbaca
+            scanInstruction.innerText = "Barcode belum fokus, coba lagi!";
+            scanInstruction.style.color = "#ff3b30"; // Ubah jadi merah
+            
+            // Kembalikan teks setelah 2 detik
+            setTimeout(() => {
+                scanInstruction.innerText = "TAP DI SINI UNTUK MENGAMBIL BARCODE";
+                scanInstruction.style.color = "rgba(255, 255, 255, 0.9)";
+            }, 2000);
         }
     });
 
