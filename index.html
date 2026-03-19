@@ -165,7 +165,7 @@
                 <div class="center-dot" id="centerDot"></div> 
             </div>
             
-            <div class="help-text" id="helpText">Ketuk 2x cepat untuk lampu senter</div>
+            <div class="help-text" id="helpText">Posisikan barcode di garis hijau<br>Ketuk 2x cepat untuk senter</div>
         </div>
         
         <div id="ocrLoading">Membaca Teks... ⏳</div>
@@ -220,18 +220,25 @@
                     height: { ideal: 720 },
                     advanced: [{ focusMode: "continuous" }]
                 },
-                // PERBAIKAN: Area diperlebar secara horizontal agar ujung barcode tidak terpotong
-                area: { top: "35%", right: "5%", left: "5%", bottom: "35%" }
+                // Area pandang dilebarkan agar seluruh bagian barcode bisa masuk frame dengan utuh
+                area: { top: "35%", right: "2%", left: "2%", bottom: "35%" }
             },
-            locator: { 
-                patchSize: "small", // Diubah ke small agar pandangan lebih seimbang
-                halfSample: false 
-            },
+            locator: { patchSize: "small", halfSample: false },
             numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2,
             decoder : { 
+                // --- MEMASUKKAN SEMUA FORMAT BARCODE ---
                 readers : [
-                    "ean_reader", "upc_reader", "code_128_reader", 
-                    "ean_8_reader", "code_39_reader", "i2of5_reader"
+                    "code_128_reader", 
+                    "ean_reader", 
+                    "ean_8_reader", 
+                    "code_39_reader", 
+                    "code_39_vin_reader", 
+                    "codabar_reader", 
+                    "upc_reader", 
+                    "upc_e_reader", 
+                    "i2of5_reader", 
+                    "2of5_reader", 
+                    "code_93_reader"
                 ] 
             },
             locate: true
@@ -275,26 +282,26 @@
         }
     });
 
-    // --- PERBAIKAN: Smart Validator & Anti Mental ---
+    // --- LOGIKA SCANNER DENGAN REM & FILTER PINTAR ---
     Quagga.onDetected(function(result) {
         const code = result.codeResult.code;
         const format = result.codeResult.format;
 
-        // 1. FILTER PINTAR: Tolak jika panjang barcode tidak masuk akal dengan formatnya
+        // 1. FILTER PINTAR: Membuang hasil tebakan yang terlalu pendek atau tidak masuk akal
         let isValid = true;
+        
+        // EAN-13 dan UPC harus pas panjangnya
         if (format === "ean_13" && code.length !== 13) isValid = false;
         if (format === "upc_a" && code.length !== 12) isValid = false;
         if (format === "ean_8" && code.length !== 8) isValid = false;
-        // Code 128 dan Code 39 panjangnya bervariasi, tapi minimal biasanya 4 karakter
-        if ((format === "code_128" || format === "code_39") && code.length < 4) isValid = false;
+        
+        // Tolak secara universal jika panjang karakter kurang dari 5 (Mencegah tebakan asal)
+        if (code.length < 5) isValid = false;
 
-        // Jika terpotong / tidak valid, abaikan dan biarkan Quagga terus mencari
-        if (!isValid) {
-            console.log("Barcode terpotong/tidak valid ditolak:", code, "Format:", format);
-            return; 
-        }
+        // Jika terpotong atau tidak valid, abaikan
+        if (!isValid) return; 
 
-        // 2. VERIFIKASI KONSISTENSI (Syarat harus terbaca sama 3x berturut-turut)
+        // 2. VERIFIKASI KETAT (Harus terbaca sama 6x agar tidak tebak-tebakan)
         if (code === lastScannedCode) {
             scanCount++;
         } else {
@@ -302,7 +309,8 @@
             lastScannedCode = code;
         }
 
-        if (scanCount >= 3) {
+        // 6 kali konfirmasi memastikan seluruh batang barcode sudah tertangkap kamera dengan jelas
+        if (scanCount >= 6) {
             guideBox.classList.add('success');
             if ("vibrate" in navigator) navigator.vibrate(150); 
             
@@ -314,7 +322,7 @@
         }
     });
 
-    // --- Mode OCR (Membaca Teks) ---
+    // --- Mode OCR (Membaca Teks Manual) ---
     btnOcr.addEventListener('click', function() {
         Quagga.stop();
         
