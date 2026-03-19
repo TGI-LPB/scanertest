@@ -17,7 +17,7 @@
             --ios-blue: #007aff;
             --ios-green: #34c759;
             --scanner-guide: rgba(255, 255, 255, 0.9);
-            --scanner-dim: rgba(0, 0, 0, 0.8); /* Gelapkan area luar panduan */
+            --scanner-dim: rgba(0, 0, 0, 0.8);
         }
 
         body {
@@ -52,7 +52,7 @@
         .btn-scan { background-color: var(--ios-green); color: white; padding: 0 24px; white-space: nowrap; }
         .btn-submit { background-color: var(--ios-blue); color: white; padding: 18px; width: 100%; margin-top: 15px; }
 
-        /* --- KELIHATAN: Scanner UI Revamp --- */
+        /* --- Scanner Full Screen --- */
         #scannerBox {
             display: none; position: fixed; top: 0; left: 0;
             width: 100vw; height: 100vh; background-color: #000;
@@ -62,15 +62,13 @@
 
         #interactive.viewport { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         #interactive.viewport video { width: 100%; height: 100%; object-fit: cover !important; }
-        
-        /* Hilangkan elemen gambar bawaan quagga yang mengganggu layout */
         #interactive.viewport canvas.drawingBuffer { display: none; }
 
-        /* KELIHATAN: Top Bar (Tutup & Flash) lebih kontras */
+        /* Top Bar */
         .top-bar {
-            position: absolute; top: 0; left: 0;
+            position: absolute; top: 20px; left: 0;
             width: 100%; display: flex; justify-content: space-between;
-            padding: calc(15px + env(safe-area-inset-top, 20px)) 20px 15px; box-sizing: border-box; 
+            padding: 10px 20px; box-sizing: border-box; 
             z-index: 20; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
         }
         .btn-icon {
@@ -80,7 +78,7 @@
         }
         .btn-icon#flashBtn.on { background-color: #ffd60a; color: black; border-color: #ffd60a;}
 
-        /* KELIHATAN: Scanner Overlay Revamp */
+        /* Scanner Overlay */
         .scanner-overlay {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; z-index: 5;
@@ -89,11 +87,9 @@
             justify-content: center; align-items: center;
         }
 
-        /* KELIHATAN: Guide Box & Dimming - Super Kontras */
         .guide-box {
             width: 85%; height: 150px; max-width: 380px;
             border: 3px solid var(--scanner-guide); border-radius: 16px; position: relative;
-            /* Buat area luar sangat gelap agar tengah menonjol */
             box-shadow: 0 0 0 9999px var(--scanner-dim);
             transition: border-color 0.2s ease, background-color 0.2s ease;
         }
@@ -124,9 +120,10 @@
             z-index: 6; text-align: center; line-height: 1.6; padding: 0 30px;
         }
 
-        /* KELIHATAN: Bottom Bar (Tombol Kamera) */
+        /* Bottom Bar (Tombol Kamera) */
         .bottom-bar {
-            position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); 
+            position: absolute; 
+            bottom: 60px; /* Jarak aman dari bawah */
             left: 0; width: 100%; display: flex; justify-content: center; z-index: 20;
         }
         .btn-shutter {
@@ -137,31 +134,30 @@
         }
         .btn-shutter:active { transform: scale(0.92); }
 
-        /* --- CANGGIH: OCR Potong Gambar (Crop & Select) UI --- */
+        /* --- OCR Workflow UI --- */
         #ocrWorkflow {
             display: none; position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; background: #000; z-index: 30;
             flex-direction: column;
         }
         
-        /* Area tempat Cropper.js bekerja */
         .cropper-container-wrapper {
-            width: 100%; height: 80%; /* Beri ruang tombol di bawah */
+            width: 100%; height: 75%; /* Sisa ruang untuk tombol bawah */
             background-color: black;
             overflow: hidden;
             display: flex; align-items: center; justify-content: center;
         }
         #ocrImageFrame { max-width: 100%; max-height: 100%; }
 
-        /* Bottom Bar khusus OCR Workflow */
+        /* Panel Bawah OCR */
         .ocr-bottom-bar {
-            height: 20%; width: 100%; background: var(--ios-card);
+            height: 25%; min-height: 170px; width: 100%; background: var(--ios-card);
             border-top-left-radius: 20px; border-top-right-radius: 20px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px; box-sizing: border-box; box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding: 25px 20px; box-sizing: border-box; box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
         }
         .ocr-instruction {
-            font-size: 15px; color: var(--ios-subtext); font-weight: 600; text-align: center; margin-bottom: 15px;
+            font-size: 15px; color: var(--ios-subtext); font-weight: 600; text-align: center; margin-bottom: 20px;
         }
         .ocr-btn-group { display: flex; gap: 15px; width: 100%; max-width: 350px;}
         .ocr-btn {
@@ -171,6 +167,24 @@
         .ocr-btn:active { opacity: 0.8; }
         .btn-ocr-process { background-color: var(--ios-blue); color: white; }
         .btn-ocr-retry { background-color: #e5e5ea; color: var(--ios-text); }
+
+        /* MODIFIKASI CROPPER.JS AGAR MUDAH DITARIK */
+        .cropper-point {
+            width: 36px !important;
+            height: 36px !important;
+            background-color: var(--ios-blue) !important;
+            border-radius: 50% !important;
+            opacity: 1 !important;
+        }
+        .cropper-point.point-se { right: -18px !important; bottom: -18px !important; }
+        .cropper-point.point-sw { left: -18px !important; bottom: -18px !important; }
+        .cropper-point.point-ne { right: -18px !important; top: -18px !important; }
+        .cropper-point.point-nw { left: -18px !important; top: -18px !important; }
+        .cropper-point.point-e, .cropper-point.point-w, .cropper-point.point-n, .cropper-point.point-s {
+            display: none !important; 
+        }
+        .cropper-view-box { outline: 3px solid var(--ios-blue) !important; }
+        .cropper-line { background-color: transparent !important; }
 
         /* Loading Spinner */
         #loadingOverlay {
@@ -230,7 +244,7 @@
             </div>
         </div>
         
-        <div class="bottom-bar">
+        <div class="bottom-bar" id="bottomBarAuto">
             <button type="button" id="btnCapture" class="btn-shutter"></button>
         </div>
 
@@ -239,9 +253,9 @@
                 <img id="ocrImageFrame" src="" alt="Jepretan untuk OCR">
             </div>
             <div class="ocr-bottom-bar">
-                <div class="ocr-instruction">Geser & ubah ukuran kotak untuk memilih ANGKA barcode</div>
+                <div class="ocr-instruction">Sesuaikan kotak ini tepat di atas ANGKA barcode</div>
                 <div class="ocr-btn-group">
-                    <button type="button" id="btnOcrRetry" class="ocr-btn btn-ocr-retry">Coba Lagi</button>
+                    <button type="button" id="btnOcrRetry" class="ocr-btn btn-ocr-retry">Ulang Foto</button>
                     <button type="button" id="btnOcrProcess" class="ocr-btn btn-ocr-process">Baca Bagian Ini</button>
                 </div>
             </div>
@@ -269,6 +283,7 @@
     
     const guideBox = document.getElementById('guideBox');
     const scannerOverlayAuto = document.getElementById('scannerOverlayAuto');
+    const bottomBarAuto = document.getElementById('bottomBarAuto');
     const ocrWorkflow = document.getElementById('ocrWorkflow');
     const ocrImageFrame = document.getElementById('ocrImageFrame');
     const btnOcrRetry = document.getElementById('btnOcrRetry');
@@ -279,22 +294,10 @@
     let scanCount = 0;
     let lastScannedCode = "";
     let isTorchOn = false;
-    let cropper = null; // Menyimpan instance Cropper.js
+    let cropper = null; 
 
-    // --- MULAI SCANNER (Auto Mode) ---
-    startScanBtn.addEventListener('click', function() {
-        scannerBox.style.display = 'flex';
-        guideBox.className = 'guide-box'; // Reset UI sukses
-        ocrWorkflow.style.display = 'none'; // Sembunyikan mode OCR
-        scannerOverlayAuto.style.display = 'flex';
-        scanCount = 0;
-        lastScannedCode = "";
-        
-        // Reset Flash Button UI
-        isTorchOn = false;
-        flashBtn.innerText = "🔦 SENTER OFF";
-        flashBtn.classList.remove('on');
-
+    // --- FUNGSI UNTUK MENYALAKAN KAMERA DARI AWAL ---
+    function nyalakanKamera() {
         Quagga.init({
             inputStream : {
                 name : "Live", type : "LiveStream",
@@ -302,14 +305,19 @@
                 constraints: {
                     facingMode: "environment",
                     width: { ideal: 1280 }, height: { ideal: 720 },
-                    advanced: [{ focusMode: "continuous" }] // Lensa fokus terus
+                    advanced: [{ focusMode: "continuous" }] 
                 },
-                // Area pandang dipersempit sedikit agar performa naik
-                area: { top: "30%", right: "10%", left: "10%", bottom: "30%" }
+                area: { top: "35%", right: "5%", left: "5%", bottom: "35%" } // Lebar agar ga potong
             },
-            locator: { patchSize: "medium", halfSample: true }, // Downscale untuk speed
+            locator: { patchSize: "small", halfSample: false }, 
             numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2,
-            decoder : { readers : ["code_128_reader", "ean_reader", "upc_reader"] }, // Ritel umum
+            decoder : { 
+                readers : [
+                    "code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader", 
+                    "code_39_vin_reader", "codabar_reader", "upc_reader", "upc_e_reader", 
+                    "i2of5_reader", "2of5_reader", "code_93_reader"
+                ] 
+            },
             locate: true
         }, function(err) {
             if (err) {
@@ -320,12 +328,29 @@
             }
             Quagga.start();
         });
+    }
+
+    // --- MULAI SCANNER KETIKA TOMBOL "SCAN" DITEKAN ---
+    startScanBtn.addEventListener('click', function() {
+        scannerBox.style.display = 'flex';
+        guideBox.classList.remove('success'); 
+        ocrWorkflow.style.display = 'none'; 
+        scannerOverlayAuto.style.display = 'flex';
+        bottomBarAuto.style.display = 'flex';
+        scanCount = 0;
+        lastScannedCode = "";
+        
+        isTorchOn = false;
+        flashBtn.innerText = "🔦 SENTER OFF";
+        flashBtn.classList.remove('on');
+
+        nyalakanKamera();
     });
 
     // --- TUTUP SCANNER ---
     stopScanBtn.addEventListener('click', function() {
         Quagga.stop();
-        if (cropper) cropper.destroy(); // Hapus cropper jika ada
+        if (cropper) cropper.destroy(); 
         scannerBox.style.display = 'none';
     });
 
@@ -348,7 +373,16 @@
     // --- AUTO MODE: Deteksi Barcode Garis ---
     Quagga.onDetected(function(result) {
         const code = result.codeResult.code;
-        if (code.length < 5) return; // Filter sampah
+        const format = result.codeResult.format;
+
+        // Filter sampah
+        let isValid = true;
+        if (format === "ean_13" && code.length !== 13) isValid = false;
+        if (format === "upc_a" && code.length !== 12) isValid = false;
+        if (format === "ean_8" && code.length !== 8) isValid = false;
+        if (code.length < 4) isValid = false;
+
+        if (!isValid) return;
 
         if (code === lastScannedCode) {
             scanCount++;
@@ -357,7 +391,7 @@
             lastScannedCode = code;
         }
 
-        if (scanCount >= 3) {
+        if (scanCount >= 6) { // Stabilizer 6x frame
             guideBox.classList.add('success');
             if ("vibrate" in navigator) navigator.vibrate(150); 
             
@@ -371,87 +405,88 @@
 
     // --- CANGGIH: JEPRET & MASUK WORKFLOW CROP/SELECT OCR ---
     btnCapture.addEventListener('click', function() {
-        // Ambil elemen video Quagga
         const video = document.querySelector('#interactive video');
         if (!video) return;
 
-        // 1. Matikan Quagga (Berhenti Scan Otomatis)
+        // 1. Matikan Quagga (Berhenti Scan)
         Quagga.stop();
         if ("vibrate" in navigator) navigator.vibrate(50);
 
-        // 2. Tangkap gambar penuh dari video feed ke Canvas
+        // 2. Tangkap gambar dari video
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Ubah jadi Data URL (Gambar)
         const imageDataUrl = canvas.toDataURL('image/jpeg');
 
-        // 3. UI: Ganti ke Mode Potong Gambar
-        scannerOverlayAuto.style.display = 'none'; // Sembunyikan guide lines auto
-        ocrWorkflow.style.display = 'flex'; // Tampilkan workflow crop
-        ocrImageFrame.src = imageDataUrl; // Set gambar ke frame
+        // 3. Ganti UI
+        scannerOverlayAuto.style.display = 'none'; 
+        bottomBarAuto.style.display = 'none'; 
+        ocrWorkflow.style.display = 'flex'; 
+        ocrImageFrame.src = imageDataUrl; 
 
-        // 4. Inisialisasi Cropper.js pada gambar yang baru dijepret
-        if (cropper) cropper.destroy(); // Bersihkan yang lama
-        
+        // 4. Mulai Cropper
+        if (cropper) cropper.destroy(); 
         cropper = new Cropper(ocrImageFrame, {
-            viewMode: 1, // Jangan biarkan kotak keluar gambar
-            dragMode: 'move', // Jari menggeser kotak, bukan membuat baru
-            autoCropArea: 0.3, // Ukuran awal kotak (30% tengah)
-            aspectRatio: NaN, // Bebas ubah bentuk kotak (persegi panjang)
-            restore: false,
-            guides: true,
-            center: true,
-            highlight: true,
-            cropBoxMovable: true, // Kotak bisa digeser
-            cropBoxResizable: true, // Kotak bisa di-resize jari
-            toggleDragModeOnDblclick: false,
+            viewMode: 1, 
+            dragMode: 'move', 
+            autoCropArea: 0.3, 
+            aspectRatio: NaN, 
+            restore: false, guides: true, center: true, highlight: true,
+            cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false,
+            ready: function () {
+                // Auto snap ke ukuran guide box (85% layar horizontal, 150px vertikal)
+                const containerData = cropper.getContainerData();
+                const boxWidth = containerData.width * 0.85; 
+                const boxHeight = 150; 
+                
+                cropper.setCropBoxData({
+                    width: boxWidth,
+                    height: boxHeight,
+                    left: (containerData.width - boxWidth) / 2,
+                    top: (containerData.height - boxHeight) / 2
+                });
+            }
         });
     });
 
-    // --- OCR: Tombol Coba Lagi (Kembali ke Auto) ---
+    // --- OCR: PERBAIKAN TOMBOL COBA LAGI (LAYAR HITAM FIX) ---
     btnOcrRetry.addEventListener('click', function() {
         if (cropper) cropper.destroy();
         ocrWorkflow.style.display = 'none';
+        
+        // Kembalikan UI Auto
         scannerOverlayAuto.style.display = 'flex';
-        Quagga.start(); // Hidupkan Quagga lagi
+        bottomBarAuto.style.display = 'flex';
+        guideBox.classList.remove('success');
+        scanCount = 0;
+        
+        // NYALAKAN KAMERA DARI AWAL
+        nyalakanKamera(); 
     });
 
-    // --- OCR: Tombol Baca Bagian Ini (Proses Akhir) ---
+    // --- OCR: PROSES BACA ANGKA ---
     btnOcrProcess.addEventListener('click', function() {
         if (!cropper) return;
 
-        // 1. Ambil kanvas berisi gambar yang sudah dipotong (CROP)
-        // Dapatkan resolusi terbaik dari area yang dipotong
         const croppedCanvas = cropper.getCroppedCanvas({
             imageSmoothingQuality: 'high'
         });
+        if (!croppedCanvas) return;
 
-        if (!croppedCanvas) {
-            alert("Gagal memotong gambar. Coba lagi.");
-            return;
-        }
-
-        // Tampilkan Loading
         loadingText.innerText = "Membaca Bagian Terpilih... ⏳";
         loadingOverlay.style.display = 'flex';
 
-        // 2. Lempar gambar potongan (Cropped) ke Tesseract (AI OCR)
         Tesseract.recognize(
-            croppedCanvas, // Gambar potongan
-            'eng', // Bahasa (angka biasanya eng standar)
+            croppedCanvas, 
+            'eng', 
             { 
                 logger: m => console.log(m),
-                // Whitelist: Hanya cari Angka, Huruf Besar, dan Dash (Format umum barcode)
                 tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' 
             }
         ).then(({ data: { text } }) => {
-            // Bersihkan hasil: Hapus spasi dan enter
             const cleanText = text.replace(/[^a-zA-Z0-9-]/g, '');
-
             loadingOverlay.style.display = 'none';
 
             if (cleanText.length >= 4) { 
@@ -462,13 +497,12 @@
                     scannerBox.style.display = 'none';
                 }, 500);
             } else {
-                alert("Angka tidak terbaca jelas di area terpilih. Mohon posisikan kotak lebih pas atau coba ketik manual.");
-                // Tetap di mode potong agar user bisa geser kotak lagi
+                alert("Angka tidak terbaca jelas. Posisikan kotak lebih rapat ke angka atau ketik manual.");
             }
         }).catch(err => {
             console.error(err);
             loadingOverlay.style.display = 'none';
-            alert("Gagal memproses gambar. Pastikan koneksi internet aktif (untuk load AI pertama kali).");
+            alert("Gagal memproses gambar. Pastikan internet stabil.");
         });
     });
 
