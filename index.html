@@ -74,28 +74,28 @@
             opacity: 0.7;
         }
         .btn-scan {
-            background-color: #34c759; /* Hijau */
+            background-color: #34c759;
             color: white;
             padding: 0 20px;
             white-space: nowrap;
         }
         .btn-submit {
-            background-color: #007aff; /* Biru */
+            background-color: #007aff;
             color: white;
             padding: 16px;
             width: 100%;
             margin-top: 10px;
         }
 
-        /* --- UPDATE: Tampilan Scanner Modal Fullscreen --- */
+        /* --- Tampilan Scanner --- */
         #scannerBox {
-            display: none; /* Disembunyikan awalnya */
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: rgba(0, 0, 0, 0.9); /* Latar belakang gelap transparan */
+            background-color: rgba(0, 0, 0, 0.95);
             z-index: 9999;
             flex-direction: column;
             align-items: center;
@@ -104,7 +104,7 @@
         .scanner-header {
             color: white;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .scanner-header h3 {
             margin: 0 0 5px 0;
@@ -117,52 +117,81 @@
         }
         .scanner-window {
             position: relative;
-            width: 85%;
+            width: 90%;
             max-width: 400px;
-            height: 300px;
-            border-radius: 20px;
+            height: 400px; /* Diperbesar agar proporsional dengan kamera */
+            border-radius: 16px;
             overflow: hidden;
-            border: 3px solid #34c759; /* Bingkai hijau */
-            box-shadow: 0 0 20px rgba(52, 199, 89, 0.4);
+            border: 2px solid #444; /* Bingkai lebih netral */
+            background-color: #000;
         }
+        
+        /* Area fokus di tengah (Overlay) */
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 150px;
+            border: 2px solid #34c759;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Menggelapkan area luar */
+            border-radius: 12px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
         #interactive.viewport {
             width: 100%;
             height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        #interactive.viewport canvas, #interactive.viewport video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        
+        /* Mencegah Zoom dengan object-fit: contain */
+        #interactive.viewport canvas.drawingBuffer {
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 2;
         }
-        
-        /* Animasi Garis Scan */
+        #interactive.viewport video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Tidak memotong/zoom video */
+            z-index: 1;
+        }
+
         .scan-line {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
+            height: 2px;
             background-color: #34c759;
-            box-shadow: 0 0 10px #34c759;
+            box-shadow: 0 0 8px #34c759;
             animation: scan 2s infinite linear;
             z-index: 10;
         }
         @keyframes scan {
-            0% { top: 0; }
-            50% { top: 100%; }
-            100% { top: 0; }
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
         }
 
         .btn-stop-modal {
-            background-color: #ff3b30; /* Merah */
+            background-color: #ff3b30;
             color: white;
             padding: 14px 30px;
             border-radius: 30px;
-            margin-top: 30px;
+            margin-top: 25px;
             font-size: 16px;
+            z-index: 10;
         }
     </style>
 </head>
@@ -192,30 +221,38 @@
 <div id="scannerBox">
     <div class="scanner-header">
         <h3>Scan Barcode</h3>
-        <p>Arahkan kamera ke area barcode</p>
+        <p>Posisikan barcode di dalam kotak hijau</p>
     </div>
     
     <div class="scanner-window">
         <div id="interactive" class="viewport"></div>
-        <div class="scan-line"></div> </div>
+        <div class="scanner-overlay">
+            <div class="scan-line"></div>
+        </div>
+    </div>
     
-    <button type="button" id="stopScanBtn" class="btn btn-stop-modal">Tutup Kamera</button>
+    <button type="button" id="stopScanBtn" class="btn btn-stop-modal">Batal Scan</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
 <script>
-    // Ambil elemen HTML
     const startScanBtn = document.getElementById('startScanBtn');
     const stopScanBtn = document.getElementById('stopScanBtn');
     const scannerBox = document.getElementById('scannerBox');
     const barcodeInput = document.getElementById('barcodeInput');
     const itemForm = document.getElementById('itemForm');
 
-    // Fungsi Mulai Scan
+    // Variabel untuk validasi (Anti-Mental)
+    let scanCount = 0;
+    let lastScannedCode = "";
+
     startScanBtn.addEventListener('click', function() {
-        // Tampilkan area kamera (gunakan flex agar posisinya ke tengah)
         scannerBox.style.display = 'flex';
+        
+        // Reset validasi setiap kali buka scanner
+        scanCount = 0;
+        lastScannedCode = "";
 
         Quagga.init({
             inputStream : {
@@ -223,16 +260,23 @@
                 type : "LiveStream",
                 target: document.querySelector('#interactive'),
                 constraints: {
-                    facingMode: "environment" // Pakai kamera belakang
+                    facingMode: "environment" // Pakai kamera belakang standar, tanpa paksaan resolusi yang bikin zoom
                 }
             },
+            locator: {
+                patchSize: "medium", // Ukuran patch untuk mencari barcode
+                halfSample: true
+            },
+            numOfWorkers: navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4,
             decoder : {
-                readers : ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"]
-            }
+                // Fokus ke format barcode paling umum di produk untuk mempercepat scanning
+                readers : ["ean_reader", "ean_8_reader", "code_128_reader", "upc_reader"]
+            },
+            locate: true // Sangat penting: menyuruh Quagga mencari kotak barcode di gambar
         }, function(err) {
             if (err) {
                 console.error(err);
-                alert("Kamera tidak dapat diakses. Pastikan Anda memberi izin.");
+                alert("Kamera tidak dapat diakses.");
                 scannerBox.style.display = 'none';
                 return;
             }
@@ -240,36 +284,44 @@
         });
     });
 
-    // Fungsi Batal Scan (Tutup Kamera)
     stopScanBtn.addEventListener('click', function() {
         Quagga.stop();
         scannerBox.style.display = 'none';
     });
 
-    // Event ketika Barcode terbaca
     Quagga.onDetected(function(result) {
         const code = result.codeResult.code;
         
-        // Masukkan hasil scan ke dalam input text form
-        barcodeInput.value = code;
-        
-        // Hentikan kamera dan sembunyikan kotak scanner
-        Quagga.stop();
-        scannerBox.style.display = 'none';
-        
-        console.log("Barcode ditemukan: " + code);
+        // LOGIKA ANTI-MENTAL: Harus terbaca sama 3 kali berturut-turut
+        if (code === lastScannedCode) {
+            scanCount++;
+        } else {
+            scanCount = 1;
+            lastScannedCode = code;
+        }
+
+        console.log(`Membaca: ${code} (Kecocokan: ${scanCount}/3)`);
+
+        // Jika sudah 3 kali cocok, baru anggap valid
+        if (scanCount >= 3) {
+            barcodeInput.value = code;
+            
+            // Hentikan kamera
+            Quagga.stop();
+            scannerBox.style.display = 'none';
+            
+            // Mainkan suara beep kecil (opsional, UX yang bagus)
+            if ("vibrate" in navigator) {
+                navigator.vibrate(200); // HP akan bergetar saat sukses
+            }
+        }
     });
 
-    // Event ketika form disubmit (Untuk simulasi saja)
     itemForm.addEventListener('submit', function(e) {
-        e.preventDefault(); // Mencegah halaman reload
-        
+        e.preventDefault();
         const code = barcodeInput.value;
         const name = document.getElementById('itemName').value;
-        
         alert(`Data Berhasil Disimpan!\n\nBarcode: ${code}\nNama: ${name}`);
-        
-        // Reset form setelah simpan
         itemForm.reset();
     });
 </script>
